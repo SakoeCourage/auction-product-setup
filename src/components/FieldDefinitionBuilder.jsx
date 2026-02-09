@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import {
   PlusIcon,
   TrashIcon,
@@ -174,23 +175,25 @@ export default function FieldDefinitionBuilder({ fields, setFields }) {
         </div>
       )}
 
-      {/* Form Preview — Side Panel or Floating Window */}
-      {previewMode !== 'closed' && fields.length > 0 && (
+      {/* Form Preview — Side Panel or Floating Window (portaled out of parent form) */}
+      {previewMode !== 'closed' && fields.length > 0 && createPortal(
         <PreviewPanel
           fields={fields}
           mode={previewMode}
           onModeChange={setPreviewMode}
           onClose={() => setPreviewMode('closed')}
-        />
+        />,
+        document.body
       )}
 
-      {/* Add Field Modal */}
-      {showAddModal && (
+      {/* Add Field Modal (portaled out of parent form) */}
+      {showAddModal && createPortal(
         <AddFieldModal
           onAdd={handleAddField}
           onClose={() => setShowAddModal(false)}
           allFields={fields}
-        />
+        />,
+        document.body
       )}
     </div>
   )
@@ -203,8 +206,8 @@ function AddFieldModal({ onAdd, onClose, allFields }) {
 
   const update = (updates) => setField({ ...field, ...updates })
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
+  const handleAdd = () => {
+    if (!field.fieldName || !field.fieldLabel) return
     onAdd(field)
   }
 
@@ -232,7 +235,7 @@ function AddFieldModal({ onAdd, onClose, allFields }) {
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
+          <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
             {/* Basic Information */}
             <SectionLabel text="Basic Information" />
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -240,7 +243,6 @@ function AddFieldModal({ onAdd, onClose, allFields }) {
                 <label className={labelClass}>Field Name <span className="text-red-400">*</span></label>
                 <input
                   type="text"
-                  required
                   value={field.fieldName}
                   onChange={(e) => update({ fieldName: e.target.value })}
                   className={inputClass}
@@ -252,7 +254,6 @@ function AddFieldModal({ onAdd, onClose, allFields }) {
                 <label className={labelClass}>Field Label <span className="text-red-400">*</span></label>
                 <input
                   type="text"
-                  required
                   value={field.fieldLabel}
                   onChange={(e) => update({ fieldLabel: e.target.value })}
                   className={inputClass}
@@ -275,7 +276,6 @@ function AddFieldModal({ onAdd, onClose, allFields }) {
                 <label className={labelClass}>Display Order <span className="text-red-400">*</span></label>
                 <input
                   type="number"
-                  required
                   min={1}
                   value={field.displayOrder}
                   onChange={(e) => update({ displayOrder: parseInt(e.target.value) || 1 })}
@@ -385,7 +385,8 @@ function AddFieldModal({ onAdd, onClose, allFields }) {
             {/* Actions */}
             <div className="flex items-center gap-3 pt-4 border-t border-slate-200 sticky bottom-0 bg-white pb-1">
               <button
-                type="submit"
+                type="button"
+                onClick={handleAdd}
                 className="inline-flex items-center gap-2 bg-violet-600 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-violet-700 transition-colors shadow-sm"
               >
                 <PlusIcon className="w-4 h-4" />
@@ -399,7 +400,7 @@ function AddFieldModal({ onAdd, onClose, allFields }) {
                 Cancel
               </button>
             </div>
-          </form>
+          </div>
         </div>
       </div>
     </div>
@@ -496,7 +497,6 @@ function FieldCard({ field, index, expanded, onToggle, onChange, onRemove, allFi
                 <label className={labelClass}>Field Name *</label>
                 <input
                   type="text"
-                  required
                   value={field.fieldName}
                   onChange={(e) => onChange({ fieldName: e.target.value })}
                   className={inputClass}
@@ -508,7 +508,6 @@ function FieldCard({ field, index, expanded, onToggle, onChange, onRemove, allFi
                 <label className={labelClass}>Field Label *</label>
                 <input
                   type="text"
-                  required
                   value={field.fieldLabel}
                   onChange={(e) => onChange({ fieldLabel: e.target.value })}
                   className={inputClass}
@@ -531,7 +530,6 @@ function FieldCard({ field, index, expanded, onToggle, onChange, onRemove, allFi
                 <label className={labelClass}>Display Order *</label>
                 <input
                   type="number"
-                  required
                   min={1}
                   value={field.displayOrder}
                   onChange={(e) => onChange({ displayOrder: parseInt(e.target.value) || 1 })}
@@ -962,7 +960,6 @@ function OptionsEditor({ options, onChange }) {
             <div key={i} className="grid grid-cols-[1fr_1fr_80px_36px] gap-2 items-center">
               <input
                 type="text"
-                required
                 value={opt.optionValue}
                 onChange={(e) => updateOption(i, { optionValue: e.target.value })}
                 className={inputClass}
@@ -970,7 +967,6 @@ function OptionsEditor({ options, onChange }) {
               />
               <input
                 type="text"
-                required
                 value={opt.optionLabel}
                 onChange={(e) => updateOption(i, { optionLabel: e.target.value })}
                 className={inputClass}
