@@ -4,7 +4,8 @@ import { useCreateProductType, useUpdateProductType } from '../api/hooks'
 import FieldDefinitionBuilder from './FieldDefinitionBuilder'
 
 export default function ProductTypeForm({ categoryId, initial, initialFields, onDone, onCancel }) {
-  const isEditing = !!initial
+  const [currentType, setCurrentType] = useState(initial || null)
+  const isEditing = !!currentType
 
   const {
     register,
@@ -86,18 +87,37 @@ export default function ProductTypeForm({ categoryId, initial, initialFields, on
       })),
     }
 
-    const mutation = isEditing ? updateMutation : createMutation
-    const variables = isEditing
-      ? { categoryId, typeId: initial.id, data: payload }
-      : { categoryId, data: payload }
-
-    mutation.mutate(variables, {
-      onSuccess: () => {
-        setSuccessMsg(isEditing ? 'Product type updated successfully!' : 'Product type created successfully!')
-        setTimeout(() => setSuccessMsg(null), 4000)
-      },
-      onError: (err) => setSubmitError(err.message),
-    })
+    if (isEditing) {
+      updateMutation.mutate(
+        { categoryId, typeId: currentType.id, data: payload },
+        {
+          onSuccess: () => {
+            setSuccessMsg('Product type updated successfully!')
+            setTimeout(() => setSuccessMsg(null), 4000)
+          },
+          onError: (err) => setSubmitError(err.message),
+        }
+      )
+    } else {
+      createMutation.mutate(
+        { categoryId, data: payload },
+        {
+          onSuccess: (data) => {
+            // Merge form data with API response (which provides the id)
+            const created = typeof data === 'object' && data !== null ? data : {}
+            setCurrentType({
+              ...payload,
+              ...created,
+              id: created.id || created.Id || created.productTypeId || created.ProductTypeId,
+              typeName: payload.typeName,
+            })
+            setSuccessMsg('Product type created! You can now add field definitions.')
+            setTimeout(() => setSuccessMsg(null), 4000)
+          },
+          onError: (err) => setSubmitError(err.message),
+        }
+      )
+    }
   }
 
   return (
@@ -107,7 +127,7 @@ export default function ProductTypeForm({ categoryId, initial, initialFields, on
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
           <h3 className="text-lg font-semibold text-slate-900">
-            {isEditing ? `Edit: ${initial.typeName}` : 'New Product Type'}
+            {isEditing ? `Edit: ${currentType.typeName}` : 'New Product Type'}
           </h3>
           <p className="text-sm text-slate-500 mt-0.5">
             {isEditing ? 'Update product type details and fields' : 'Define a new product type and its fields'}
@@ -209,8 +229,16 @@ export default function ProductTypeForm({ categoryId, initial, initialFields, on
         </div>
       </div>
 
-      {/* Field Definitions */}
-      <FieldDefinitionBuilder fields={fields} setFields={setFields} />
+      {/* Field Definitions — only available for existing product types */}
+      {isEditing ? (
+        <FieldDefinitionBuilder fields={fields} setFields={setFields} />
+      ) : (
+        <div className="bg-white rounded-xl border border-slate-200 p-6 text-center">
+          <p className="text-sm text-slate-500">
+            Save the product type first, then you can add field definitions.
+          </p>
+        </div>
+      )}
 
       {/* Actions */}
       <div className="flex items-center gap-3">
