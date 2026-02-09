@@ -6,7 +6,6 @@ import {
   TrashIcon,
   ArrowRightIcon,
   FolderOpenIcon,
-  Squares2X2Icon,
   ExclamationTriangleIcon,
   PhotoIcon,
 } from '@heroicons/react/24/outline'
@@ -96,7 +95,7 @@ export default function Categories() {
         <div>
           <h2 className="text-2xl font-bold text-slate-900">Product Categories</h2>
           <p className="text-sm text-slate-500 mt-1">
-            Manage your auction product categories
+            {categories.length} {categories.length === 1 ? 'category' : 'categories'}
           </p>
         </div>
         <button
@@ -116,111 +115,114 @@ export default function Categories() {
         </div>
       )}
 
-      {/* Category List */}
+      {/* Category Grid — WordPress-inspired media cards */}
       {categories.length > 0 ? (
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
           {categories.map((cat) => (
             <div
               key={cat.id}
-              className="group bg-white rounded-2xl shadow-sm ring-1 ring-slate-900/5 hover:shadow-lg hover:shadow-slate-200/50 transition-all duration-300 overflow-hidden"
+              className="group bg-white rounded-xl border border-slate-200 hover:border-violet-300 hover:shadow-md hover:shadow-violet-100/50 transition-all duration-200 overflow-hidden flex flex-col"
             >
-              <div className="flex items-stretch">
-                {/* Thumbnail Area */}
-                <div className="w-40 sm:w-52 shrink-0 relative bg-slate-100">
-                  {uploadThumbnail.isPending && uploadTargetId === cat.id ? (
-                    <div className="absolute inset-0 flex items-center justify-center bg-violet-50">
-                      <svg className="animate-spin w-7 h-7 text-violet-500" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                      </svg>
-                    </div>
-                  ) : cat.thumbnailUrl ? (
-                    <button
-                      type="button"
-                      onClick={() => handleThumbnailClick(cat.id)}
-                      className="block w-full h-full cursor-pointer group/thumb"
-                      title="Change thumbnail"
-                    >
-                      <img
-                        src={cat.thumbnailUrl}
-                        alt={cat.categoryName}
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center">
-                        <div className="bg-white/90 rounded-xl px-3 py-2 flex items-center gap-2">
-                          <PhotoIcon className="w-4 h-4 text-slate-700" />
-                          <span className="text-xs font-medium text-slate-700">Change</span>
-                        </div>
+              {/* Featured Image — big & prominent like WP media */}
+              <div className="relative aspect-[4/3] bg-slate-50 overflow-hidden">
+                {uploadThumbnail.isPending && uploadTargetId === cat.id ? (
+                  <div className="absolute inset-0 flex items-center justify-center bg-violet-50/80">
+                    <svg className="animate-spin w-8 h-8 text-violet-500" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                  </div>
+                ) : cat.thumbnailUrl ? (
+                  <button
+                    type="button"
+                    onClick={() => handleThumbnailClick(cat.id)}
+                    className="block w-full h-full cursor-pointer group/thumb"
+                    title="Change thumbnail"
+                  >
+                    <img
+                      src={cat.thumbnailUrl}
+                      alt={cat.categoryName}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/40 transition-all duration-200 flex items-center justify-center">
+                      <div className="opacity-0 group-hover/thumb:opacity-100 transition-opacity bg-white rounded-lg px-3 py-1.5 flex items-center gap-1.5 shadow-lg">
+                        <PhotoIcon className="w-4 h-4 text-slate-600" />
+                        <span className="text-xs font-medium text-slate-700">Change</span>
                       </div>
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => handleThumbnailClick(cat.id)}
-                      className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-slate-50 to-slate-100 hover:from-violet-50 hover:to-indigo-50 border-r border-dashed border-slate-200 transition-colors cursor-pointer min-h-[120px]"
-                      title="Upload thumbnail"
-                    >
-                      <PhotoIcon className="w-8 h-8 text-slate-300" />
-                      <span className="text-[11px] font-medium text-slate-400">Add Image</span>
-                    </button>
-                  )}
-                  {/* Active indicator stripe */}
-                  <div className={`absolute left-0 top-0 bottom-0 w-1 ${cat.isActive ? 'bg-gradient-to-b from-violet-500 to-indigo-500' : 'bg-slate-300'}`} />
+                    </div>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleThumbnailClick(cat.id)}
+                    className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-slate-50 via-white to-slate-100 hover:from-violet-50 hover:via-white hover:to-indigo-50 transition-colors cursor-pointer"
+                    title="Upload thumbnail"
+                  >
+                    <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center group-hover:bg-violet-100 transition-colors">
+                      <PhotoIcon className="w-6 h-6 text-slate-300 group-hover:text-violet-400 transition-colors" />
+                    </div>
+                    <span className="text-xs font-medium text-slate-400 group-hover:text-violet-500 transition-colors">
+                      Set featured image
+                    </span>
+                  </button>
+                )}
+
+                {/* Status badge overlaid on image */}
+                <div className="absolute top-2.5 left-2.5">
+                  <span
+                    className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md backdrop-blur-sm ${
+                      cat.isActive
+                        ? 'bg-emerald-500/90 text-white'
+                        : 'bg-slate-800/70 text-slate-200'
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${cat.isActive ? 'bg-white' : 'bg-slate-400'}`} />
+                    {cat.isActive ? 'Active' : 'Draft'}
+                  </span>
                 </div>
 
-                {/* Content */}
-                <div className="flex-1 p-5 flex flex-col justify-between min-w-0">
-                  {/* Top row */}
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-3 mb-1">
-                        <h3 className="text-lg font-semibold text-slate-900 truncate">
-                          {cat.categoryName}
-                        </h3>
-                        <span
-                          className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full shrink-0 ${
-                            cat.isActive
-                              ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/10'
-                              : 'bg-slate-100 text-slate-500 ring-1 ring-slate-900/5'
-                          }`}
-                        >
-                          <span className={`w-1.5 h-1.5 rounded-full ${cat.isActive ? 'bg-emerald-500' : 'bg-slate-400'}`} />
-                          {cat.isActive ? 'Active' : 'Inactive'}
-                        </span>
-                      </div>
-                      <p className="text-sm text-slate-500 line-clamp-2 leading-relaxed">
-                        {cat.description || 'No description provided'}
-                      </p>
-                    </div>
-                    <span className="text-xs text-slate-400 font-mono bg-slate-50 px-2.5 py-1 rounded-lg shrink-0 ring-1 ring-slate-900/5">
-                      #{cat.displayOrder}
-                    </span>
-                  </div>
+                {/* Order badge */}
+                <div className="absolute top-2.5 right-2.5">
+                  <span className="text-[10px] font-mono font-bold text-white/90 bg-black/40 backdrop-blur-sm px-1.5 py-0.5 rounded">
+                    #{cat.displayOrder}
+                  </span>
+                </div>
+              </div>
 
-                  {/* Bottom actions */}
-                  <div className="flex items-center justify-end gap-2 mt-4 pt-4 border-t border-slate-100">
-                    <button
-                      onClick={() => handleEdit(cat)}
-                      className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 px-3.5 py-2 rounded-lg transition-colors ring-1 ring-slate-900/5"
-                    >
-                      <PencilSquareIcon className="w-3.5 h-3.5" />
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => setDeleteTarget(cat)}
-                      className="inline-flex items-center gap-1.5 text-xs font-medium text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3.5 py-2 rounded-lg transition-colors ring-1 ring-red-600/10"
-                    >
-                      <TrashIcon className="w-3.5 h-3.5" />
-                      Delete
-                    </button>
-                    <button
-                      onClick={() => navigate(`/categories/${cat.id}/types`)}
-                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 px-4 py-2 rounded-lg transition-all shadow-sm shadow-violet-500/10"
-                    >
-                      Product Types
-                      <ArrowRightIcon className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+              {/* Card Body */}
+              <div className="flex-1 p-4 flex flex-col">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-sm font-semibold text-slate-900 truncate leading-tight">
+                    {cat.categoryName}
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1 line-clamp-2 leading-relaxed">
+                    {cat.description || 'No description'}
+                  </p>
+                </div>
+
+                {/* Action Row — clean WP-style row actions */}
+                <div className="flex items-center gap-1 mt-3 pt-3 border-t border-slate-100">
+                  <button
+                    onClick={() => navigate(`/categories/${cat.id}/types`)}
+                    className="flex-1 inline-flex items-center justify-center gap-1 text-xs font-semibold text-violet-600 hover:text-white hover:bg-violet-600 bg-violet-50 px-2.5 py-1.5 rounded-lg transition-all"
+                  >
+                    Types
+                    <ArrowRightIcon className="w-3 h-3" />
+                  </button>
+                  <button
+                    onClick={() => handleEdit(cat)}
+                    className="inline-flex items-center justify-center w-8 h-8 text-slate-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition-colors"
+                    title="Edit"
+                  >
+                    <PencilSquareIcon className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setDeleteTarget(cat)}
+                    className="inline-flex items-center justify-center w-8 h-8 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    title="Delete"
+                  >
+                    <TrashIcon className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             </div>
@@ -228,9 +230,9 @@ export default function Categories() {
         </div>
       ) : (
         /* Empty State */
-        <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl ring-1 ring-slate-900/5">
-          <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mb-4">
-            <FolderOpenIcon className="w-8 h-8 text-slate-400" />
+        <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-slate-200">
+          <div className="w-16 h-16 bg-violet-50 rounded-2xl flex items-center justify-center mb-4">
+            <FolderOpenIcon className="w-8 h-8 text-violet-300" />
           </div>
           <h3 className="text-base font-semibold text-slate-900 mb-1">No categories yet</h3>
           <p className="text-sm text-slate-500 mb-6">Get started by creating your first product category</p>

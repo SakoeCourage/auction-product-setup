@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import {
   PlusIcon,
   TrashIcon,
@@ -6,6 +6,9 @@ import {
   ChevronUpIcon,
   Bars3Icon,
   XMarkIcon,
+  EyeIcon,
+  ArrowsPointingOutIcon,
+  ArrowsPointingInIcon,
 } from '@heroicons/react/24/outline'
 
 const DATA_TYPES = [
@@ -64,6 +67,8 @@ const selectClass =
 export default function FieldDefinitionBuilder({ fields, setFields }) {
   const [expandedIndex, setExpandedIndex] = useState(null)
   const [showAddModal, setShowAddModal] = useState(false)
+  // 'closed' | 'side' | 'float'
+  const [previewMode, setPreviewMode] = useState('closed')
 
   const handleAddField = (newField) => {
     const maxOrder = fields.reduce((max, f) => Math.max(max, f.displayOrder), 0)
@@ -83,52 +88,76 @@ export default function FieldDefinitionBuilder({ fields, setFields }) {
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-900/5 overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center">
-            <Bars3Icon className="w-4 h-4 text-violet-600" />
-          </div>
-          <div>
-            <h3 className="text-base font-semibold text-slate-900">
-              Field Definitions
-            </h3>
-            <p className="text-xs text-slate-500">
-              {fields.length} {fields.length === 1 ? 'field' : 'fields'} defined
-            </p>
-          </div>
+    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      {/* Header — WP-style toolbar */}
+      <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white">
+        <div className="flex items-center gap-2.5">
+          <Bars3Icon className="w-4.5 h-4.5 text-violet-500" />
+          <h3 className="text-sm font-semibold text-slate-800">
+            Field Definitions
+          </h3>
+          <span className="text-[11px] font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+            {fields.length}
+          </span>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowAddModal(true)}
-          className="inline-flex items-center gap-1.5 bg-emerald-600 text-white pl-3 pr-4 py-2 rounded-xl text-xs font-semibold hover:bg-emerald-700 transition-colors shadow-sm"
-        >
-          <PlusIcon className="w-3.5 h-3.5" />
-          Add Field
-        </button>
-      </div>
-
-      {/* Fields List */}
-      <div className="p-4">
-        {fields.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center mb-3">
-              <Bars3Icon className="w-6 h-6 text-slate-400" />
-            </div>
-            <p className="text-sm font-medium text-slate-500 mb-1">No fields defined</p>
-            <p className="text-xs text-slate-400 mb-4">Add fields to define the product type schema</p>
+        <div className="flex items-center gap-2">
+          {fields.length > 0 && (
             <button
               type="button"
-              onClick={() => setShowAddModal(true)}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors"
+              onClick={() => setPreviewMode(previewMode === 'closed' ? 'side' : 'closed')}
+              className={`inline-flex items-center gap-1.5 pl-3 pr-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                previewMode !== 'closed'
+                  ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
             >
-              <PlusIcon className="w-3.5 h-3.5" />
-              Add Field
+              <EyeIcon className="w-3.5 h-3.5" />
+              Preview
             </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setShowAddModal(true)}
+            className="inline-flex items-center gap-1.5 bg-violet-600 text-white pl-3 pr-3.5 py-1.5 rounded-lg text-xs font-semibold hover:bg-violet-700 transition-colors shadow-sm"
+          >
+            <PlusIcon className="w-3.5 h-3.5" />
+            Add Field
+          </button>
+        </div>
+      </div>
+
+      {/* Fields — WP-style table list */}
+      {fields.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-14 text-center">
+          <div className="w-14 h-14 bg-violet-50 rounded-2xl flex items-center justify-center mb-3">
+            <Bars3Icon className="w-7 h-7 text-violet-300" />
           </div>
-        ) : (
-          <div className="space-y-3">
+          <p className="text-sm font-medium text-slate-600 mb-1">No fields defined</p>
+          <p className="text-xs text-slate-400 mb-4">Add fields to define the product type schema</p>
+          <button
+            type="button"
+            onClick={() => setShowAddModal(true)}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-violet-700 bg-violet-50 hover:bg-violet-100 px-3.5 py-2 rounded-lg transition-colors"
+          >
+            <PlusIcon className="w-3.5 h-3.5" />
+            Add First Field
+          </button>
+        </div>
+      ) : (
+        <div>
+          {/* Table Header */}
+          <div className="hidden sm:grid grid-cols-[40px_1fr_1fr_100px_80px_60px_36px] gap-3 px-5 py-2 bg-slate-50 border-b border-slate-200 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+            <span>#</span>
+            <span>Label</span>
+            <span>Name</span>
+            <span>Type</span>
+            <span>Flags</span>
+            <span>Group</span>
+            <span />
+          </div>
+
+          {/* Field Rows */}
+          <div className="divide-y divide-slate-100">
             {fields.map((field, index) => (
               <FieldCard
                 key={index}
@@ -142,8 +171,18 @@ export default function FieldDefinitionBuilder({ fields, setFields }) {
               />
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Form Preview — Side Panel or Floating Window */}
+      {previewMode !== 'closed' && fields.length > 0 && (
+        <PreviewPanel
+          fields={fields}
+          mode={previewMode}
+          onModeChange={setPreviewMode}
+          onClose={() => setPreviewMode('closed')}
+        />
+      )}
 
       {/* Add Field Modal */}
       {showAddModal && (
@@ -176,17 +215,17 @@ function AddFieldModal({ onAdd, onClose, allFields }) {
         onClick={onClose}
       />
       <div className="flex min-h-full items-start justify-center p-4 pt-10">
-        <div className="relative w-full max-w-3xl bg-white rounded-2xl shadow-2xl ring-1 ring-slate-900/5 overflow-hidden">
+        <div className="relative w-full max-w-3xl bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white">
             <div>
-              <h3 className="text-lg font-semibold text-slate-900">Add New Field</h3>
-              <p className="text-sm text-slate-500 mt-0.5">Define a new field for this product type</p>
+              <h3 className="text-base font-semibold text-slate-800">Add New Field</h3>
+              <p className="text-xs text-slate-400 mt-0.5">Define a new field for this product type</p>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
             >
               <XMarkIcon className="w-5 h-5" />
             </button>
@@ -344,10 +383,10 @@ function AddFieldModal({ onAdd, onClose, allFields }) {
             )}
 
             {/* Actions */}
-            <div className="flex items-center gap-3 pt-4 border-t border-slate-100 sticky bottom-0 bg-white pb-1">
+            <div className="flex items-center gap-3 pt-4 border-t border-slate-200 sticky bottom-0 bg-white pb-1">
               <button
                 type="submit"
-                className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-green-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:from-emerald-700 hover:to-green-700 transition-all shadow-lg shadow-emerald-500/20"
+                className="inline-flex items-center gap-2 bg-violet-600 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-violet-700 transition-colors shadow-sm"
               >
                 <PlusIcon className="w-4 h-4" />
                 Add Field
@@ -355,7 +394,7 @@ function AddFieldModal({ onAdd, onClose, allFields }) {
               <button
                 type="button"
                 onClick={onClose}
-                className="px-5 py-2.5 rounded-xl text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors"
+                className="px-5 py-2.5 rounded-lg text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors"
               >
                 Cancel
               </button>
@@ -369,65 +408,88 @@ function AddFieldModal({ onAdd, onClose, allFields }) {
 
 function FieldCard({ field, index, expanded, onToggle, onChange, onRemove, allFields }) {
   return (
-    <div className={`rounded-xl border transition-all duration-200 ${expanded ? 'border-violet-200 ring-1 ring-violet-100 shadow-sm' : 'border-slate-200 hover:border-slate-300'}`}>
-      {/* Header */}
+    <div className={`transition-all duration-150 ${expanded ? 'bg-violet-50/30' : 'hover:bg-slate-50/80'}`}>
+      {/* Row — WP-style table row */}
       <div
         onClick={onToggle}
-        className={`flex items-center justify-between px-4 py-3 cursor-pointer transition-colors ${expanded ? 'bg-violet-50/50' : 'hover:bg-slate-50'}`}
+        className="grid grid-cols-1 sm:grid-cols-[40px_1fr_1fr_100px_80px_60px_36px] gap-3 items-center px-5 py-3 cursor-pointer"
       >
-        <div className="flex items-center gap-2.5 min-w-0">
-          <span className="text-xs font-mono bg-slate-100 text-slate-500 w-7 h-7 rounded-lg flex items-center justify-center shrink-0 font-semibold">
-            {field.displayOrder}
+        {/* Order */}
+        <span className="hidden sm:flex text-[11px] font-mono text-slate-400 font-semibold">
+          {field.displayOrder}
+        </span>
+
+        {/* Label */}
+        <div className="min-w-0 flex items-center gap-2">
+          <span className={`font-medium text-sm truncate ${expanded ? 'text-violet-700' : 'text-slate-800 hover:text-violet-600'}`}>
+            {field.fieldLabel || 'Untitled Field'}
           </span>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="font-medium text-slate-900 text-sm truncate">
-                {field.fieldLabel || 'Untitled Field'}
-              </span>
-              {field.fieldName && (
-                <span className="text-xs text-slate-400 font-mono hidden sm:inline">
-                  {field.fieldName}
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${TYPE_COLORS[field.dataType] || 'bg-slate-100 text-slate-600'}`}>
-                {field.dataType}
-              </span>
-              {field.isRequired && (
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-red-50 text-red-600">
-                  Required
-                </span>
-              )}
-              {field.fieldGroup && (
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-violet-50 text-violet-600 hidden sm:inline">
-                  {field.fieldGroup}
-                </span>
-              )}
-            </div>
-          </div>
+          {/* Mobile badges */}
+          <span className={`sm:hidden text-[10px] font-semibold px-1.5 py-0.5 rounded ${TYPE_COLORS[field.dataType] || 'bg-slate-100 text-slate-600'}`}>
+            {field.dataType}
+          </span>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
+
+        {/* Name */}
+        <span className="hidden sm:block text-xs text-slate-400 font-mono truncate">
+          {field.fieldName || '-'}
+        </span>
+
+        {/* Type Badge */}
+        <div className="hidden sm:block">
+          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${TYPE_COLORS[field.dataType] || 'bg-slate-100 text-slate-600'}`}>
+            {field.dataType}
+          </span>
+        </div>
+
+        {/* Flags */}
+        <div className="hidden sm:flex items-center gap-1">
+          {field.isRequired && (
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-red-50 text-red-500 uppercase">
+              Req
+            </span>
+          )}
+          {field.isUnique && (
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 uppercase">
+              Unq
+            </span>
+          )}
+        </div>
+
+        {/* Group */}
+        <span className="hidden sm:block text-[11px] text-slate-400 truncate">
+          {field.fieldGroup || '-'}
+        </span>
+
+        {/* Actions */}
+        <div className="hidden sm:flex items-center justify-end">
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onRemove() }}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+            className="p-1 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"
           >
-            <TrashIcon className="w-4 h-4" />
+            <TrashIcon className="w-3.5 h-3.5" />
           </button>
-          {expanded ? (
-            <ChevronUpIcon className="w-4 h-4 text-violet-500" />
-          ) : (
-            <ChevronDownIcon className="w-4 h-4 text-slate-400" />
-          )}
         </div>
       </div>
 
       {/* Expanded Form */}
       {expanded && (
-        <div className="px-4 pb-4 space-y-5 border-t border-slate-100">
+        <div className="px-5 pb-5 space-y-5 border-t border-slate-100 bg-white">
+          {/* Mobile delete */}
+          <div className="flex sm:hidden justify-end pt-3">
+            <button
+              type="button"
+              onClick={onRemove}
+              className="inline-flex items-center gap-1 text-xs text-red-500 hover:text-red-700 bg-red-50 px-2.5 py-1 rounded-lg"
+            >
+              <TrashIcon className="w-3.5 h-3.5" />
+              Remove
+            </button>
+          </div>
+
           {/* Basic Info */}
-          <div className="pt-4">
+          <div className="pt-3 sm:pt-4">
             <SectionLabel text="Basic Information" />
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
               <div>
@@ -616,41 +678,32 @@ function ToggleSwitch({ label, checked, onChange }) {
 function CollapsibleSection({ title, color = 'slate', children }) {
   const [open, setOpen] = useState(false)
 
-  const borderColors = {
-    slate: 'border-slate-200',
-    blue: 'border-blue-200',
-    amber: 'border-amber-200',
-    emerald: 'border-emerald-200',
-  }
-  const textColors = {
-    slate: 'text-slate-600',
-    blue: 'text-blue-600',
-    amber: 'text-amber-600',
-    emerald: 'text-emerald-600',
-  }
-  const bgColors = {
-    slate: 'bg-slate-50',
-    blue: 'bg-blue-50',
-    amber: 'bg-amber-50',
-    emerald: 'bg-emerald-50',
+  const dotColors = {
+    slate: 'bg-slate-400',
+    blue: 'bg-blue-400',
+    amber: 'bg-amber-400',
+    emerald: 'bg-emerald-400',
   }
 
   return (
-    <div className={`rounded-xl border ${borderColors[color]} overflow-hidden`}>
+    <div className="rounded-lg border border-slate-200 overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className={`w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold ${textColors[color]} ${bgColors[color]} hover:opacity-80 transition-opacity`}
+        className="w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold text-slate-600 bg-slate-50 hover:bg-slate-100 transition-colors"
       >
-        <span>{title}</span>
+        <span className="flex items-center gap-2">
+          <span className={`w-2 h-2 rounded-full ${dotColors[color]}`} />
+          {title}
+        </span>
         {open ? (
-          <ChevronUpIcon className="w-3.5 h-3.5" />
+          <ChevronUpIcon className="w-3.5 h-3.5 text-slate-400" />
         ) : (
-          <ChevronDownIcon className="w-3.5 h-3.5" />
+          <ChevronDownIcon className="w-3.5 h-3.5 text-slate-400" />
         )}
       </button>
       {open && (
-        <div className="p-4 bg-white">
+        <div className="p-4 bg-white border-t border-slate-100">
           {children}
         </div>
       )}
@@ -952,4 +1005,431 @@ function OptionsEditor({ options, onChange }) {
       )}
     </CollapsibleSection>
   )
+}
+
+/* ── Preview Panel (Side Drawer + Floating Window) ───────── */
+
+const previewInputClass =
+  'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400'
+const previewSelectClass =
+  'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400'
+
+function PreviewPanel({ fields, mode, onModeChange, onClose }) {
+  const dragRef = useRef(null)
+  const [pos, setPos] = useState({ x: 80, y: 80 })
+  const [size, setSize] = useState({ w: 420, h: 520 })
+  const dragState = useRef(null)
+  const resizeState = useRef(null)
+
+  const onDragStart = useCallback((e) => {
+    if (e.target.closest('button, input, select, textarea')) return
+    e.preventDefault()
+    dragState.current = { startX: e.clientX - pos.x, startY: e.clientY - pos.y }
+    const onMove = (ev) => {
+      if (!dragState.current) return
+      setPos({ x: ev.clientX - dragState.current.startX, y: ev.clientY - dragState.current.startY })
+    }
+    const onUp = () => {
+      dragState.current = null
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }, [pos])
+
+  const onResizeStart = useCallback((e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    resizeState.current = { startX: e.clientX, startY: e.clientY, w: size.w, h: size.h }
+    const onMove = (ev) => {
+      if (!resizeState.current) return
+      const dw = ev.clientX - resizeState.current.startX
+      const dh = ev.clientY - resizeState.current.startY
+      setSize({
+        w: Math.max(320, resizeState.current.w + dw),
+        h: Math.max(300, resizeState.current.h + dh),
+      })
+    }
+    const onUp = () => {
+      resizeState.current = null
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }, [size])
+
+  const previewContent = <PreviewFormContent fields={fields} />
+
+  // ─── Side Drawer ───
+  if (mode === 'side') {
+    return (
+      <>
+        {/* Backdrop */}
+        <div className="fixed inset-0 z-40" onClick={onClose} />
+        {/* Drawer */}
+        <div className="fixed top-0 right-0 z-50 h-full w-full max-w-md bg-white shadow-2xl border-l border-slate-200 flex flex-col animate-[slideIn_0.2s_ease-out]">
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 bg-gradient-to-r from-indigo-50 to-violet-50 shrink-0">
+            <div className="flex items-center gap-2">
+              <EyeIcon className="w-4 h-4 text-indigo-500" />
+              <h4 className="text-sm font-semibold text-slate-700">Form Preview</h4>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => onModeChange('float')}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                title="Pop out to floating window"
+              >
+                <ArrowsPointingOutIcon className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                <XMarkIcon className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Scrollable content */}
+          <div className="flex-1 overflow-y-auto p-5 bg-slate-50/50">
+            {previewContent}
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  // ─── Floating Window ───
+  return (
+    <div
+      ref={dragRef}
+      className="fixed z-50 bg-white rounded-xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden"
+      style={{ left: pos.x, top: pos.y, width: size.w, height: size.h }}
+    >
+      {/* Draggable Header */}
+      <div
+        onMouseDown={onDragStart}
+        className="flex items-center justify-between px-4 py-2.5 border-b border-slate-200 bg-gradient-to-r from-indigo-50 to-violet-50 shrink-0 cursor-move select-none"
+      >
+        <div className="flex items-center gap-2">
+          <div className="flex gap-0.5">
+            <span className="w-1 h-1 rounded-full bg-slate-300" />
+            <span className="w-1 h-1 rounded-full bg-slate-300" />
+            <span className="w-1 h-1 rounded-full bg-slate-300" />
+            <span className="w-1 h-1 rounded-full bg-slate-300" />
+            <span className="w-1 h-1 rounded-full bg-slate-300" />
+            <span className="w-1 h-1 rounded-full bg-slate-300" />
+          </div>
+          <EyeIcon className="w-3.5 h-3.5 text-indigo-500" />
+          <span className="text-xs font-semibold text-slate-700">Preview</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => onModeChange('side')}
+            className="p-1 rounded text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+            title="Dock to side panel"
+          >
+            <ArrowsPointingInIcon className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+          >
+            <XMarkIcon className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto p-4 bg-slate-50/50">
+        {previewContent}
+      </div>
+
+      {/* Resize handle */}
+      <div
+        onMouseDown={onResizeStart}
+        className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
+        style={{ background: 'linear-gradient(135deg, transparent 50%, #94a3b8 50%, transparent 51%, transparent 75%, #94a3b8 75%)' }}
+      />
+    </div>
+  )
+}
+
+function PreviewFormContent({ fields }) {
+  const sorted = [...fields].sort((a, b) => a.displayOrder - b.displayOrder)
+
+  const groups = []
+  const ungrouped = []
+  const groupMap = new Map()
+
+  sorted.forEach((f) => {
+    if (f.fieldGroup) {
+      if (!groupMap.has(f.fieldGroup)) {
+        const group = { name: f.fieldGroup, order: f.fieldGroupOrder || 999, fields: [] }
+        groupMap.set(f.fieldGroup, group)
+        groups.push(group)
+      }
+      groupMap.get(f.fieldGroup).fields.push(f)
+    } else {
+      ungrouped.push(f)
+    }
+  })
+
+  groups.sort((a, b) => a.order - b.order)
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="p-5 space-y-5">
+        {ungrouped.length > 0 && (
+          <div className="space-y-4">
+            {ungrouped.map((f, i) => (
+              <PreviewField key={`ug-${i}`} field={f} />
+            ))}
+          </div>
+        )}
+
+        {groups.map((group, gi) => (
+          <fieldset key={gi} className="border border-slate-200 rounded-lg p-4 pt-2">
+            <legend className="px-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              {group.name}
+            </legend>
+            <div className="space-y-4 mt-2">
+              {group.fields.map((f, fi) => (
+                <PreviewField key={`g${gi}-${fi}`} field={f} />
+              ))}
+            </div>
+          </fieldset>
+        ))}
+      </div>
+
+      <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
+        <span className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 bg-slate-200 cursor-default">
+          Cancel
+        </span>
+        <span className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-violet-500 cursor-default shadow-sm">
+          Submit
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function PreviewField({ field }) {
+  const { fieldLabel, fieldDescription, placeholder, dataType, isRequired, defaultValue, options } = field
+
+  const label = (
+    <label className="block text-sm font-medium text-slate-700 mb-1">
+      {fieldLabel || 'Untitled'}
+      {isRequired && <span className="text-red-500 ml-0.5">*</span>}
+    </label>
+  )
+
+  const hint = fieldDescription ? (
+    <p className="text-xs text-slate-400 mt-1">{fieldDescription}</p>
+  ) : null
+
+  switch (dataType) {
+    case 'TextArea':
+      return (
+        <div>
+          {label}
+          <textarea
+            readOnly
+            rows={3}
+            placeholder={placeholder || `Enter ${fieldLabel || 'text'}...`}
+            defaultValue={defaultValue}
+            className={previewInputClass + ' resize-none'}
+          />
+          {hint}
+        </div>
+      )
+
+    case 'Boolean':
+      return (
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <div className="w-9 h-5 bg-slate-200 rounded-full" />
+            <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow-sm" />
+          </div>
+          <span className="text-sm font-medium text-slate-700">
+            {fieldLabel || 'Untitled'}
+            {isRequired && <span className="text-red-500 ml-0.5">*</span>}
+          </span>
+          {hint}
+        </div>
+      )
+
+    case 'Dropdown':
+      return (
+        <div>
+          {label}
+          <select className={previewSelectClass} defaultValue="">
+            <option value="" disabled>{placeholder || `Select ${fieldLabel || 'option'}...`}</option>
+            {(options || []).sort((a, b) => a.displayOrder - b.displayOrder).map((opt, i) => (
+              <option key={i} value={opt.optionValue}>{opt.optionLabel}</option>
+            ))}
+          </select>
+          {hint}
+        </div>
+      )
+
+    case 'MultiSelect':
+      return (
+        <div>
+          {label}
+          <div className="rounded-lg border border-slate-300 bg-white p-2.5 min-h-[40px]">
+            {(options || []).length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {options.sort((a, b) => a.displayOrder - b.displayOrder).map((opt, i) => (
+                  <span key={i} className="inline-flex items-center gap-1 text-xs font-medium bg-violet-50 text-violet-700 px-2.5 py-1 rounded-full border border-violet-200">
+                    <input type="checkbox" readOnly className="w-3 h-3 rounded accent-violet-600" />
+                    {opt.optionLabel}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <span className="text-sm text-slate-400">{placeholder || 'Select options...'}</span>
+            )}
+          </div>
+          {hint}
+        </div>
+      )
+
+    case 'Date':
+      return (
+        <div>
+          {label}
+          <input
+            type="date"
+            readOnly
+            className={previewInputClass}
+          />
+          {hint}
+        </div>
+      )
+
+    case 'DateTime':
+      return (
+        <div>
+          {label}
+          <input
+            type="datetime-local"
+            readOnly
+            className={previewInputClass}
+          />
+          {hint}
+        </div>
+      )
+
+    case 'Number':
+    case 'Decimal':
+    case 'Currency':
+    case 'Percentage':
+      return (
+        <div>
+          {label}
+          <div className="relative">
+            {dataType === 'Currency' && (
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400 font-medium">$</span>
+            )}
+            <input
+              type="number"
+              readOnly
+              placeholder={placeholder || `Enter ${fieldLabel || 'value'}...`}
+              defaultValue={defaultValue}
+              step={dataType === 'Decimal' || dataType === 'Percentage' ? '0.01' : '1'}
+              className={`${previewInputClass} ${dataType === 'Currency' ? 'pl-7' : ''} ${dataType === 'Percentage' ? 'pr-8' : ''}`}
+            />
+            {dataType === 'Percentage' && (
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-400 font-medium">%</span>
+            )}
+          </div>
+          {hint}
+        </div>
+      )
+
+    case 'Email':
+      return (
+        <div>
+          {label}
+          <input
+            type="email"
+            readOnly
+            placeholder={placeholder || 'email@example.com'}
+            defaultValue={defaultValue}
+            className={previewInputClass}
+          />
+          {hint}
+        </div>
+      )
+
+    case 'Phone':
+      return (
+        <div>
+          {label}
+          <input
+            type="tel"
+            readOnly
+            placeholder={placeholder || '+1 (555) 000-0000'}
+            defaultValue={defaultValue}
+            className={previewInputClass}
+          />
+          {hint}
+        </div>
+      )
+
+    case 'Url':
+      return (
+        <div>
+          {label}
+          <input
+            type="url"
+            readOnly
+            placeholder={placeholder || 'https://example.com'}
+            defaultValue={defaultValue}
+            className={previewInputClass}
+          />
+          {hint}
+        </div>
+      )
+
+    case 'File':
+    case 'Image':
+      return (
+        <div>
+          {label}
+          <div className="rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 p-4 text-center cursor-default">
+            <div className="text-slate-400 text-xs font-medium">
+              {dataType === 'Image' ? 'Click or drag image here' : 'Click or drag file here'}
+            </div>
+            <div className="text-[10px] text-slate-300 mt-1">
+              {dataType === 'Image' ? 'JPG, PNG, GIF up to 10MB' : 'Any file type'}
+            </div>
+          </div>
+          {hint}
+        </div>
+      )
+
+    default: // Text
+      return (
+        <div>
+          {label}
+          <input
+            type="text"
+            readOnly
+            placeholder={placeholder || `Enter ${fieldLabel || 'text'}...`}
+            defaultValue={defaultValue}
+            className={previewInputClass}
+          />
+          {hint}
+        </div>
+      )
+  }
 }
