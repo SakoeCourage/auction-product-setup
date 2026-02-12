@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
+import { validateForm, evaluateCondition } from '../utils/fieldValidation'
 import {
   PlusIcon,
   TrashIcon,
@@ -1159,6 +1160,34 @@ function PreviewPanel({ fields, mode, onModeChange, onClose }) {
 }
 
 function PreviewFormContent({ fields }) {
+  const [formValues, setFormValues] = useState({})
+  const [errors, setErrors] = useState({})
+  const [submitted, setSubmitted] = useState(false)
+
+  const handleChange = (fieldName, value) => {
+    setFormValues((prev) => {
+      const next = { ...prev, [fieldName]: value }
+      // Re-validate on change after first submit
+      if (submitted) {
+        const result = validateForm(fields, next)
+        setErrors(result.errors)
+      }
+      return next
+    })
+  }
+
+  const handleSubmit = () => {
+    setSubmitted(true)
+    const result = validateForm(fields, formValues)
+    setErrors(result.errors)
+  }
+
+  const handleReset = () => {
+    setFormValues({})
+    setErrors({})
+    setSubmitted(false)
+  }
+
   const sorted = [...fields].sort((a, b) => a.displayOrder - b.displayOrder)
 
   const groups = []
@@ -1180,14 +1209,32 @@ function PreviewFormContent({ fields }) {
 
   groups.sort((a, b) => a.order - b.order)
 
+  const renderField = (f, key) => {
+    const visible = evaluateCondition(f.conditionalRules, formValues)
+
+    return (
+      <div
+        key={key}
+        className={`transition-all duration-200 ${visible ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden m-0 p-0'}`}
+      >
+        <PreviewField
+          field={f}
+          value={formValues[f.fieldName] ?? ''}
+          onChange={(val) => handleChange(f.fieldName, val)}
+          error={errors[f.fieldName]}
+        />
+      </div>
+    )
+  }
+
+  const errorCount = Object.keys(errors).length
+
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
       <div className="p-5 space-y-5">
         {ungrouped.length > 0 && (
           <div className="space-y-4">
-            {ungrouped.map((f, i) => (
-              <PreviewField key={`ug-${i}`} field={f} />
-            ))}
+            {ungrouped.map((f, i) => renderField(f, `ug-${i}`))}
           </div>
         )}
 
@@ -1197,27 +1244,47 @@ function PreviewFormContent({ fields }) {
               {group.name}
             </legend>
             <div className="space-y-4 mt-2">
-              {group.fields.map((f, fi) => (
-                <PreviewField key={`g${gi}-${fi}`} field={f} />
-              ))}
+              {group.fields.map((f, fi) => renderField(f, `g${gi}-${fi}`))}
             </div>
           </fieldset>
         ))}
       </div>
 
+      {/* Validation summary */}
+      {submitted && errorCount > 0 && (
+        <div className="mx-5 mb-3 px-3 py-2 rounded-lg bg-red-50 border border-red-200">
+          <p className="text-xs font-semibold text-red-600">
+            {errorCount} {errorCount === 1 ? 'error' : 'errors'} found
+          </p>
+        </div>
+      )}
+      {submitted && errorCount === 0 && (
+        <div className="mx-5 mb-3 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200">
+          <p className="text-xs font-semibold text-emerald-600">All fields are valid</p>
+        </div>
+      )}
+
       <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
-        <span className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 bg-slate-200 cursor-default">
-          Cancel
-        </span>
-        <span className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-violet-500 cursor-default shadow-sm">
-          Submit
-        </span>
+        <button
+          type="button"
+          onClick={handleReset}
+          className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-500 bg-slate-200 hover:bg-slate-300 transition-colors"
+        >
+          Reset
+        </button>
+        <button
+          type="button"
+          onClick={handleSubmit}
+          className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-violet-500 hover:bg-violet-600 transition-colors shadow-sm"
+        >
+          Validate
+        </button>
       </div>
     </div>
   )
 }
 
-function PreviewField({ field }) {
+function PreviewField({ field, value, onChange, error }) {
   const { fieldLabel, fieldDescription, placeholder, dataType, isRequired, defaultValue, options } = field
 
   const label = (
@@ -1231,34 +1298,51 @@ function PreviewField({ field }) {
     <p className="text-xs text-slate-400 mt-1">{fieldDescription}</p>
   ) : null
 
+  const errorHint = error ? (
+    <p className="text-xs text-red-500 mt-1">{error}</p>
+  ) : null
+
+  const errorBorder = error ? ' border-red-300 focus:ring-red-500/20 focus:border-red-400' : ''
+
+  // Use controlled value, falling back to defaultValue on first render
+  const val = value || defaultValue || ''
+
   switch (dataType) {
     case 'TextArea':
       return (
         <div>
           {label}
           <textarea
-            readOnly
             rows={3}
             placeholder={placeholder || `Enter ${fieldLabel || 'text'}...`}
-            defaultValue={defaultValue}
-            className={previewInputClass + ' resize-none'}
+            value={val}
+            onChange={(e) => onChange(e.target.value)}
+            className={previewInputClass + ' resize-none' + errorBorder}
           />
-          {hint}
+          {errorHint || hint}
         </div>
       )
 
     case 'Boolean':
       return (
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <div className="w-9 h-5 bg-slate-200 rounded-full" />
-            <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow-sm" />
+        <div>
+          <div className="flex items-center gap-3">
+            <label className="relative cursor-pointer">
+              <input
+                type="checkbox"
+                checked={value === 'true' || value === true}
+                onChange={(e) => onChange(e.target.checked ? 'true' : 'false')}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-slate-200 peer-checked:bg-violet-600 rounded-full transition-colors" />
+              <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform peer-checked:translate-x-4" />
+            </label>
+            <span className="text-sm font-medium text-slate-700">
+              {fieldLabel || 'Untitled'}
+              {isRequired && <span className="text-red-500 ml-0.5">*</span>}
+            </span>
           </div>
-          <span className="text-sm font-medium text-slate-700">
-            {fieldLabel || 'Untitled'}
-            {isRequired && <span className="text-red-500 ml-0.5">*</span>}
-          </span>
-          {hint}
+          {errorHint || hint}
         </div>
       )
 
@@ -1266,37 +1350,61 @@ function PreviewField({ field }) {
       return (
         <div>
           {label}
-          <select className={previewSelectClass} defaultValue="">
+          <select
+            className={previewSelectClass + errorBorder}
+            value={val}
+            onChange={(e) => onChange(e.target.value)}
+          >
             <option value="" disabled>{placeholder || `Select ${fieldLabel || 'option'}...`}</option>
             {(options || []).sort((a, b) => a.displayOrder - b.displayOrder).map((opt, i) => (
               <option key={i} value={opt.optionValue}>{opt.optionLabel}</option>
             ))}
           </select>
-          {hint}
+          {errorHint || hint}
         </div>
       )
 
-    case 'MultiSelect':
+    case 'MultiSelect': {
+      const selected = value ? (Array.isArray(value) ? value : value.split(',').filter(Boolean)) : []
+      const toggleOption = (optValue) => {
+        const next = selected.includes(optValue)
+          ? selected.filter((v) => v !== optValue)
+          : [...selected, optValue]
+        onChange(next.join(','))
+      }
       return (
         <div>
           {label}
-          <div className="rounded-lg border border-slate-300 bg-white p-2.5 min-h-[40px]">
+          <div className={`rounded-lg border bg-white p-2.5 min-h-10 ${error ? 'border-red-300' : 'border-slate-300'}`}>
             {(options || []).length > 0 ? (
               <div className="flex flex-wrap gap-1.5">
                 {options.sort((a, b) => a.displayOrder - b.displayOrder).map((opt, i) => (
-                  <span key={i} className="inline-flex items-center gap-1 text-xs font-medium bg-violet-50 text-violet-700 px-2.5 py-1 rounded-full border border-violet-200">
-                    <input type="checkbox" readOnly className="w-3 h-3 rounded accent-violet-600" />
+                  <label
+                    key={i}
+                    className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border cursor-pointer transition-colors ${
+                      selected.includes(opt.optionValue)
+                        ? 'bg-violet-100 text-violet-800 border-violet-300'
+                        : 'bg-violet-50 text-violet-700 border-violet-200'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selected.includes(opt.optionValue)}
+                      onChange={() => toggleOption(opt.optionValue)}
+                      className="w-3 h-3 rounded accent-violet-600"
+                    />
                     {opt.optionLabel}
-                  </span>
+                  </label>
                 ))}
               </div>
             ) : (
               <span className="text-sm text-slate-400">{placeholder || 'Select options...'}</span>
             )}
           </div>
-          {hint}
+          {errorHint || hint}
         </div>
       )
+    }
 
     case 'Date':
       return (
@@ -1304,10 +1412,11 @@ function PreviewField({ field }) {
           {label}
           <input
             type="date"
-            readOnly
-            className={previewInputClass}
+            value={val}
+            onChange={(e) => onChange(e.target.value)}
+            className={previewInputClass + errorBorder}
           />
-          {hint}
+          {errorHint || hint}
         </div>
       )
 
@@ -1317,10 +1426,11 @@ function PreviewField({ field }) {
           {label}
           <input
             type="datetime-local"
-            readOnly
-            className={previewInputClass}
+            value={val}
+            onChange={(e) => onChange(e.target.value)}
+            className={previewInputClass + errorBorder}
           />
-          {hint}
+          {errorHint || hint}
         </div>
       )
 
@@ -1337,17 +1447,17 @@ function PreviewField({ field }) {
             )}
             <input
               type="number"
-              readOnly
               placeholder={placeholder || `Enter ${fieldLabel || 'value'}...`}
-              defaultValue={defaultValue}
+              value={val}
+              onChange={(e) => onChange(e.target.value)}
               step={dataType === 'Decimal' || dataType === 'Percentage' ? '0.01' : '1'}
-              className={`${previewInputClass} ${dataType === 'Currency' ? 'pl-7' : ''} ${dataType === 'Percentage' ? 'pr-8' : ''}`}
+              className={`${previewInputClass}${errorBorder} ${dataType === 'Currency' ? 'pl-7' : ''} ${dataType === 'Percentage' ? 'pr-8' : ''}`}
             />
             {dataType === 'Percentage' && (
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-400 font-medium">%</span>
             )}
           </div>
-          {hint}
+          {errorHint || hint}
         </div>
       )
 
@@ -1357,12 +1467,12 @@ function PreviewField({ field }) {
           {label}
           <input
             type="email"
-            readOnly
             placeholder={placeholder || 'email@example.com'}
-            defaultValue={defaultValue}
-            className={previewInputClass}
+            value={val}
+            onChange={(e) => onChange(e.target.value)}
+            className={previewInputClass + errorBorder}
           />
-          {hint}
+          {errorHint || hint}
         </div>
       )
 
@@ -1372,12 +1482,12 @@ function PreviewField({ field }) {
           {label}
           <input
             type="tel"
-            readOnly
             placeholder={placeholder || '+1 (555) 000-0000'}
-            defaultValue={defaultValue}
-            className={previewInputClass}
+            value={val}
+            onChange={(e) => onChange(e.target.value)}
+            className={previewInputClass + errorBorder}
           />
-          {hint}
+          {errorHint || hint}
         </div>
       )
 
@@ -1387,12 +1497,12 @@ function PreviewField({ field }) {
           {label}
           <input
             type="url"
-            readOnly
             placeholder={placeholder || 'https://example.com'}
-            defaultValue={defaultValue}
-            className={previewInputClass}
+            value={val}
+            onChange={(e) => onChange(e.target.value)}
+            className={previewInputClass + errorBorder}
           />
-          {hint}
+          {errorHint || hint}
         </div>
       )
 
@@ -1401,7 +1511,7 @@ function PreviewField({ field }) {
       return (
         <div>
           {label}
-          <div className="rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 p-4 text-center cursor-default">
+          <div className={`rounded-lg border-2 border-dashed bg-slate-50 p-4 text-center cursor-default ${error ? 'border-red-300' : 'border-slate-300'}`}>
             <div className="text-slate-400 text-xs font-medium">
               {dataType === 'Image' ? 'Click or drag image here' : 'Click or drag file here'}
             </div>
@@ -1409,7 +1519,7 @@ function PreviewField({ field }) {
               {dataType === 'Image' ? 'JPG, PNG, GIF up to 10MB' : 'Any file type'}
             </div>
           </div>
-          {hint}
+          {errorHint || hint}
         </div>
       )
 
@@ -1419,12 +1529,12 @@ function PreviewField({ field }) {
           {label}
           <input
             type="text"
-            readOnly
             placeholder={placeholder || `Enter ${fieldLabel || 'text'}...`}
-            defaultValue={defaultValue}
-            className={previewInputClass}
+            value={val}
+            onChange={(e) => onChange(e.target.value)}
+            className={previewInputClass + errorBorder}
           />
-          {hint}
+          {errorHint || hint}
         </div>
       )
   }
