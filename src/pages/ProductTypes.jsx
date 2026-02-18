@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import { api } from '../api/client'
 import {
   PlusIcon,
   PencilSquareIcon,
@@ -11,8 +12,11 @@ import {
 } from '@heroicons/react/24/outline'
 import { useProductTypes, useCategories, useFieldDefinitions, useUploadProductTypeThumbnail } from '../api/hooks'
 import ProductTypeForm from '../components/ProductTypeForm'
+import Toggle from '../components/Toggle'
+import { useQueryClient } from '@tanstack/react-query'
 
 export default function ProductTypes() {
+  const qc = useQueryClient()
   const { categoryId } = useParams()
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState(null)
@@ -62,6 +66,17 @@ export default function ProductTypes() {
     setShowForm(false)
     setEditing(null)
     setEditTypeId(null)
+  }
+
+
+
+  const handleToggle = (typeId) => {
+    if (typeId == null) return
+    api.put(`/products/toggle-visibility/${typeId}`).then(() => {
+      qc.invalidateQueries({ queryKey: ['productTypes', categoryId] })
+    }).catch((error) => {
+      console.error(error)
+    })
   }
 
   if (loading) {
@@ -250,11 +265,10 @@ export default function ProductTypes() {
                     {/* Status badge */}
                     <div className="absolute top-2.5 left-2.5">
                       <span
-                        className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md backdrop-blur-sm ${
-                          type.isActive
-                            ? 'bg-emerald-500/90 text-white'
-                            : 'bg-slate-800/70 text-slate-200'
-                        }`}
+                        className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md backdrop-blur-sm ${type.isActive
+                          ? 'bg-emerald-500/90 text-white'
+                          : 'bg-slate-800/70 text-slate-200'
+                          }`}
                       >
                         <span className={`w-1.5 h-1.5 rounded-full ${type.isActive ? 'bg-white' : 'bg-slate-400'}`} />
                         {type.isActive ? 'Active' : 'Draft'}
@@ -271,13 +285,20 @@ export default function ProductTypes() {
 
                   {/* Card Body */}
                   <div className="flex-1 p-4 flex flex-col">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-semibold text-slate-900 truncate leading-tight">
-                        {type.typeName}
-                      </h3>
-                      <p className="text-xs text-slate-400 mt-1 line-clamp-2 leading-relaxed">
-                        {type.description || 'No description'}
-                      </p>
+                    <div className="flex-1 flex items-start justify-between min-w-0">
+                      <nav>
+                        <h3 className="text-sm font-semibold text-slate-900 truncate leading-tight">
+                          {type.typeName}
+                        </h3>
+                        <p className="text-xs text-slate-400 mt-1 line-clamp-2 leading-relaxed">
+                          {type.description || 'No description'}
+                        </p>
+                      </nav>
+                      {/* <button >
+                        {type.isActive ? "true" : "false"}
+                        {type.id}
+                      </button> */}
+                      <Toggle onCheck={() => handleToggle(type.id)} checked={type.isActive} />
                     </div>
 
                     {/* Action Row */}
