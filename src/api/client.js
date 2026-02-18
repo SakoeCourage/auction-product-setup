@@ -33,7 +33,7 @@ export const uploadCategoryThumbnail = (categoryId, file) => {
 
 // Product Types
 export const getProductTypes = (categoryId) =>
-  api.get(`/products/categories/${categoryId}/types`)
+  api.get(`/products/categories/${categoryId}/types?ignoreStatus=true`)
 export const createProductType = (categoryId, data) =>
   api.post(`/products/categories/${categoryId}/types`, data)
 export const updateProductType = (categoryId, typeId, data) =>
